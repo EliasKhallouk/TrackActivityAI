@@ -1,0 +1,28 @@
+# Node modules
+node_modules/
+
+# macOS
+.DS_Store
+
+# Expo
+.expo/
+.expo-shared/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment files
+.env
+.env.local
+
+# Build output
+dist/
+build/
+
+# VS Code settings
+.vscode/
+
+# Web build
+web-build/
