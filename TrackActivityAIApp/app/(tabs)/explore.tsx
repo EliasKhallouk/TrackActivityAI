@@ -1,4 +1,4 @@
-import { Gyroscope } from 'expo-sensors';
+/*import { Gyroscope } from 'expo-sensors';
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
@@ -51,3 +51,30 @@ const styles = StyleSheet.create({
     marginVertical: 4,
   },
 });
+*/
+
+/*
+import { StyleSheet, Text, View } from 'react-native';
+import ActivityDetector from '../../components/ActivityDetector';
+
+export default function ExploreScreen() {
+  return (
+    <View style={styles.container}>
+      <Text style={styles.title}>Explore Tab</Text>
+      <ActivityDetector />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, padding: 20, justifyContent: 'center' },
+  title: { fontSize: 22, fontWeight: 'bold', marginBottom: 12 },
+});
+
+*/
+
+import FeaturePreview from '../../components/FeaturePreview';
+
+export default function ExploreScreen() {
+  return <FeaturePreview />;
+}
