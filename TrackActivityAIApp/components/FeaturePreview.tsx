@@ -58,17 +58,24 @@ export default function FeaturePreview() {
         { name: 'gyro-meanFreq-Z', value: meanFreqGyroZ }
       ];
     
-      const accBandsX = computeBandsEnergy(acc.map(v => v[0])).map(b => ({ name: `accX-${b.name}`, value: b.value }));
-      const accBandsY = computeBandsEnergy(acc.map(v => v[1])).map(b => ({ name: `accY-${b.name}`, value: b.value }));
-      const accBandsZ = computeBandsEnergy(acc.map(v => v[2])).map(b => ({ name: `accZ-${b.name}`, value: b.value }));
-    
-      const gyroBandsX = computeBandsEnergy(gyro.map(v => v[0])).map(b => ({ name: `gyroX-${b.name}`, value: b.value }));
-      const gyroBandsY = computeBandsEnergy(gyro.map(v => v[1])).map(b => ({ name: `gyroY-${b.name}`, value: b.value }));
-      const gyroBandsZ = computeBandsEnergy(gyro.map(v => v[2])).map(b => ({ name: `gyroZ-${b.name}`, value: b.value }));
-    
+
       const bandFeatures = [
-        ...accBandsX, ...accBandsY, ...accBandsZ,
-        ...gyroBandsX, ...gyroBandsY, ...gyroBandsZ
+        ...computeBandsEnergy(acc.map(v => v[0])).map(b => ({ name: `accX-${b.name}`, value: b.value })),
+        ...computeBandsEnergy(acc.map(v => v[1])).map(b => ({ name: `accY-${b.name}`, value: b.value })),
+        ...computeBandsEnergy(acc.map(v => v[2])).map(b => ({ name: `accZ-${b.name}`, value: b.value })),
+        ...computeBandsEnergy(gyro.map(v => v[0])).map(b => ({ name: `gyroX-${b.name}`, value: b.value })),
+        ...computeBandsEnergy(gyro.map(v => v[1])).map(b => ({ name: `gyroY-${b.name}`, value: b.value })),
+        ...computeBandsEnergy(gyro.map(v => v[2])).map(b => ({ name: `gyroZ-${b.name}`, value: b.value })),
+        ...computeBandsEnergy(jerkAcc.map(v => v[0])).map(b => ({ name: `jerkAccX-${b.name}`, value: b.value })),
+        ...computeBandsEnergy(jerkAcc.map(v => v[1])).map(b => ({ name: `jerkAccY-${b.name}`, value: b.value })),
+        ...computeBandsEnergy(jerkAcc.map(v => v[2])).map(b => ({ name: `jerkAccZ-${b.name}`, value: b.value })),
+        ...computeBandsEnergy(jerkGyro.map(v => v[0])).map(b => ({ name: `jerkGyroX-${b.name}`, value: b.value })),
+        ...computeBandsEnergy(jerkGyro.map(v => v[1])).map(b => ({ name: `jerkGyroY-${b.name}`, value: b.value })),
+        ...computeBandsEnergy(jerkGyro.map(v => v[2])).map(b => ({ name: `jerkGyroZ-${b.name}`, value: b.value })),
+        ...computeBandsEnergy(magAcc).map(b => ({ name: `magAcc-${b.name}`, value: b.value })),
+        ...computeBandsEnergy(magGyro).map(b => ({ name: `magGyro-${b.name}`, value: b.value })),
+        ...computeBandsEnergy(magJerkAcc).map(b => ({ name: `magJerkAcc-${b.name}`, value: b.value })),
+        ...computeBandsEnergy(magJerkGyro).map(b => ({ name: `magJerkGyro-${b.name}`, value: b.value }))
       ];
     
       const allFeatures = [
@@ -86,6 +93,7 @@ export default function FeaturePreview() {
     
       setFeatures(allFeatures);
     }, 1000);
+    
     
     
 
@@ -268,7 +276,7 @@ function computeMeanFreq(signal: number[]): number {
   const im = Array(N).fill(0);
 
   // Perform naive DFT (not optimized FFT but enough for 128 points)
-  const spectrum = Array(N / 2).fill(0);
+  const spectrum = Array(Math.floor(N / 2)).fill(0);
   for (let k = 0; k < N / 2; k++) {
     let sumRe = 0;
     let sumIm = 0;
@@ -360,7 +368,7 @@ function computeBandsEnergy(signal: number[], bandSize: number = 8): { name: str
   if (N === 0) return [];
 
   // FFT naive
-  const spectrum = Array(N / 2).fill(0);
+  const spectrum = Array(Math.floor(N / 2)).fill(0);
   for (let k = 0; k < N / 2; k++) {
     let re = 0;
     let im = 0;
