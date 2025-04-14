@@ -25,23 +25,40 @@ export default function FeaturePreview() {
     });
 
     const interval = setInterval(() => {
-        const acc = accelBuffer.current;
-        const gyro = gyroBuffer.current;
-
-        const accFeatures = computeStats(acc, 'acc');
-        const gyroFeatures = computeStats(gyro, 'gyro');
-
-        const { jerk: jerkAcc, mag: magAcc, magJerk: magJerkAcc } = computeDerivedSignals(acc);
-        const { jerk: jerkGyro, mag: magGyro, magJerk: magJerkGyro } = computeDerivedSignals(gyro);
-
-        const jerkAccFeatures = computeStatsFromSignal('jerkAcc', jerkAcc);
-        const jerkGyroFeatures = computeStatsFromSignal('jerkGyro', jerkGyro);
-        const magAccFeatures = computeStatsFromSignal('magAcc', magAcc);
-        const magGyroFeatures = computeStatsFromSignal('magGyro', magGyro);
-        const magJerkAccFeatures = computeStatsFromSignal('magJerkAcc', magJerkAcc);
-        const magJerkGyroFeatures = computeStatsFromSignal('magJerkGyro', magJerkGyro);
-
-        const allFeatures = [
+      const acc = accelBuffer.current;
+      const gyro = gyroBuffer.current;
+    
+      const accFeatures = computeStats(acc, 'acc');
+      const gyroFeatures = computeStats(gyro, 'gyro');
+    
+      const { jerk: jerkAcc, mag: magAcc, magJerk: magJerkAcc } = computeDerivedSignals(acc);
+      const { jerk: jerkGyro, mag: magGyro, magJerk: magJerkGyro } = computeDerivedSignals(gyro);
+    
+      const jerkAccFeatures = computeStatsFromSignal('jerkAcc', jerkAcc);
+      const jerkGyroFeatures = computeStatsFromSignal('jerkGyro', jerkGyro);
+      const magAccFeatures = computeStatsFromSignal('magAcc', magAcc);
+      const magGyroFeatures = computeStatsFromSignal('magGyro', magGyro);
+      const magJerkAccFeatures = computeStatsFromSignal('magJerkAcc', magJerkAcc);
+      const magJerkGyroFeatures = computeStatsFromSignal('magJerkGyro', magJerkGyro);
+    
+      const meanFreqAccX = computeMeanFreq(acc.map(v => v[0]));
+      const meanFreqAccY = computeMeanFreq(acc.map(v => v[1]));
+      const meanFreqAccZ = computeMeanFreq(acc.map(v => v[2]));
+    
+      const meanFreqGyroX = computeMeanFreq(gyro.map(v => v[0]));
+      const meanFreqGyroY = computeMeanFreq(gyro.map(v => v[1]));
+      const meanFreqGyroZ = computeMeanFreq(gyro.map(v => v[2]));
+    
+      const freqFeatures = [
+        { name: 'acc-meanFreq-X', value: meanFreqAccX },
+        { name: 'acc-meanFreq-Y', value: meanFreqAccY },
+        { name: 'acc-meanFreq-Z', value: meanFreqAccZ },
+        { name: 'gyro-meanFreq-X', value: meanFreqGyroX },
+        { name: 'gyro-meanFreq-Y', value: meanFreqGyroY },
+        { name: 'gyro-meanFreq-Z', value: meanFreqGyroZ }
+      ];
+    
+      const allFeatures = [
         ...accFeatures,
         ...gyroFeatures,
         ...jerkAccFeatures,
@@ -49,12 +66,13 @@ export default function FeaturePreview() {
         ...magAccFeatures,
         ...magGyroFeatures,
         ...magJerkAccFeatures,
-        ...magJerkGyroFeatures
-        ];
-
-
+        ...magJerkGyroFeatures,
+        ...freqFeatures
+      ];
+    
       setFeatures(allFeatures);
     }, 1000);
+    
 
     return () => {
       accSub.remove();
@@ -226,6 +244,34 @@ function computeDerivedSignals(data: number[][]) {
     };
 }
   
+function computeMeanFreq(signal: number[]): number {
+  const N = signal.length;
+  if (N === 0) return 0;
+
+  // Apply FFT (real part only)
+  const re = [...signal];
+  const im = Array(N).fill(0);
+
+  // Perform naive DFT (not optimized FFT but enough for 128 points)
+  const spectrum = Array(N / 2).fill(0);
+  for (let k = 0; k < N / 2; k++) {
+    let sumRe = 0;
+    let sumIm = 0;
+    for (let n = 0; n < N; n++) {
+      const angle = (2 * Math.PI * k * n) / N;
+      sumRe += signal[n] * Math.cos(angle);
+      sumIm -= signal[n] * Math.sin(angle);
+    }
+    const mag = Math.sqrt(sumRe ** 2 + sumIm ** 2);
+    spectrum[k] = mag;
+  }
+
+  const totalEnergy = spectrum.reduce((s, v) => s + v, 0);
+  if (totalEnergy === 0) return 0;
+
+  const weightedFreq = spectrum.reduce((sum, mag, k) => sum + k * mag, 0);
+  return weightedFreq / totalEnergy;
+}
 
 function computeStatsFromSignal(prefix: string, signal: number[][] | number[]) {
     if (signal.length === 0) return [];
