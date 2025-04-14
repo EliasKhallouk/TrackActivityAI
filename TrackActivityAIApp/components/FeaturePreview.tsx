@@ -76,6 +76,28 @@ export default function FeaturePreview() {
         ...computeBandsEnergyUCIHAR(magJerkGyro).map(b => ({ name: `magJerkGyro-${b.name}`, value: b.value }))
       ];
 
+      const mean = (arr: number[]) => arr.reduce((a, b) => a + b, 0) / arr.length;
+
+      const accMeanVec = [mean(acc.map(v => v[0])), mean(acc.map(v => v[1])), mean(acc.map(v => v[2]))];
+      const gyroMeanVec = [mean(gyro.map(v => v[0])), mean(gyro.map(v => v[1])), mean(gyro.map(v => v[2]))];
+      const jerkAccMeanVec = [mean(jerkAcc.map(v => v[0])), mean(jerkAcc.map(v => v[1])), mean(jerkAcc.map(v => v[2]))];
+      const jerkGyroMeanVec = [mean(jerkGyro.map(v => v[0])), mean(jerkGyro.map(v => v[1])), mean(jerkGyro.map(v => v[2]))];
+
+      // Gravity approx = acc moyenne très lissée ou Z élevé
+      // Pour simplifier, on prend accMean comme proxy
+      const gravityMean = [...accMeanVec]; // approximation
+
+      // Angle entre vecteurs
+      const angleFeatures = [
+        { name: 'angleAccGravity', value: angleBetweenVectors(accMeanVec, gravityMean) },
+        { name: 'angleJerkAccGravity', value: angleBetweenVectors(jerkAccMeanVec, gravityMean) },
+        { name: 'angleGyroGravity', value: angleBetweenVectors(gyroMeanVec, gravityMean) },
+        { name: 'angleJerkGyroGravity', value: angleBetweenVectors(jerkGyroMeanVec, gravityMean) },
+        { name: 'angleXGravity', value: angleBetweenVectors([1, 0, 0], gravityMean) },
+        { name: 'angleYGravity', value: angleBetweenVectors([0, 1, 0], gravityMean) },
+        { name: 'angleZGravity', value: angleBetweenVectors([0, 0, 1], gravityMean) }
+      ];
+
       const allFeatures = [
         ...accFeatures,
         ...gyroFeatures,
@@ -86,7 +108,8 @@ export default function FeaturePreview() {
         ...magJerkAccFeatures,
         ...magJerkGyroFeatures,
         ...freqFeatures,
-        ...bandFeatures
+        ...bandFeatures,
+        ...angleFeatures
       ];
 
       setFeatures(allFeatures);
@@ -430,6 +453,15 @@ function computeBandsEnergyUCIHAR(signal: number[]): { name: string, value: numb
       value: energy
     };
   });
+}
+
+function angleBetweenVectors(a: number[], b: number[]): number {
+  const dot = a.reduce((sum, val, i) => sum + val * b[i], 0);
+  const normA = Math.sqrt(a.reduce((sum, val) => sum + val ** 2, 0));
+  const normB = Math.sqrt(b.reduce((sum, val) => sum + val ** 2, 0));
+  if (normA === 0 || normB === 0) return 0;
+  const cos = dot / (normA * normB);
+  return Math.acos(Math.min(Math.max(cos, -1), 1)); // Clamp to [-1, 1]
 }
 
 const styles = StyleSheet.create({
