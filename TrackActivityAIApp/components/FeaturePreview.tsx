@@ -58,6 +58,19 @@ export default function FeaturePreview() {
         { name: 'gyro-meanFreq-Z', value: meanFreqGyroZ }
       ];
     
+      const accBandsX = computeBandsEnergy(acc.map(v => v[0])).map(b => ({ name: `accX-${b.name}`, value: b.value }));
+      const accBandsY = computeBandsEnergy(acc.map(v => v[1])).map(b => ({ name: `accY-${b.name}`, value: b.value }));
+      const accBandsZ = computeBandsEnergy(acc.map(v => v[2])).map(b => ({ name: `accZ-${b.name}`, value: b.value }));
+    
+      const gyroBandsX = computeBandsEnergy(gyro.map(v => v[0])).map(b => ({ name: `gyroX-${b.name}`, value: b.value }));
+      const gyroBandsY = computeBandsEnergy(gyro.map(v => v[1])).map(b => ({ name: `gyroY-${b.name}`, value: b.value }));
+      const gyroBandsZ = computeBandsEnergy(gyro.map(v => v[2])).map(b => ({ name: `gyroZ-${b.name}`, value: b.value }));
+    
+      const bandFeatures = [
+        ...accBandsX, ...accBandsY, ...accBandsZ,
+        ...gyroBandsX, ...gyroBandsY, ...gyroBandsZ
+      ];
+    
       const allFeatures = [
         ...accFeatures,
         ...gyroFeatures,
@@ -67,11 +80,13 @@ export default function FeaturePreview() {
         ...magGyroFeatures,
         ...magJerkAccFeatures,
         ...magJerkGyroFeatures,
-        ...freqFeatures
+        ...freqFeatures,
+        ...bandFeatures
       ];
     
       setFeatures(allFeatures);
     }, 1000);
+    
     
 
     return () => {
@@ -338,6 +353,39 @@ function computeStatsFromAxes(prefix: string, X: number[], Y: number[], Z: numbe
       { name: `${prefix}-kurtosis-Y`, value: kurtosis(Y) },
       { name: `${prefix}-kurtosis-Z`, value: kurtosis(Z) },
     ];
+}
+
+function computeBandsEnergy(signal: number[], bandSize: number = 8): { name: string, value: number }[] {
+  const N = signal.length;
+  if (N === 0) return [];
+
+  // FFT naive
+  const spectrum = Array(N / 2).fill(0);
+  for (let k = 0; k < N / 2; k++) {
+    let re = 0;
+    let im = 0;
+    for (let n = 0; n < N; n++) {
+      const angle = (2 * Math.PI * k * n) / N;
+      re += signal[n] * Math.cos(angle);
+      im -= signal[n] * Math.sin(angle);
+    }
+    spectrum[k] = re ** 2 + im ** 2; // carré de la magnitude = énergie
+  }
+
+  // Découpe en bandes (8 par 8 comme dans UCI HAR)
+  const features: { name: string, value: number }[] = [];
+  for (let i = 0; i < spectrum.length; i += bandSize) {
+    const band = spectrum.slice(i, i + bandSize);
+    const energy = band.reduce((sum, val) => sum + val, 0);
+    const start = i + 1;
+    const end = Math.min(i + bandSize, spectrum.length);
+    features.push({
+      name: `bandsEnergy-${start},${end}`,
+      value: energy
+    });
+  }
+
+  return features;
 }
 
 const styles = StyleSheet.create({
