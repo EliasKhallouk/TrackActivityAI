@@ -297,6 +297,22 @@ function computeStatsFromSignal(prefix: string, signal: number[][] | number[]) {
       ];
     }
 }
+
+function skewness(arr: number[]): number {
+  const n = arr.length;
+  if (n < 2) return 0;
+  const mean = arr.reduce((a, b) => a + b, 0) / n;
+  const stdDev = Math.sqrt(arr.reduce((sum, x) => sum + (x - mean) ** 2, 0) / n);
+  return stdDev === 0 ? 0 : arr.reduce((sum, x) => sum + ((x - mean) / stdDev) ** 3, 0) / n;
+}
+
+function kurtosis(arr: number[]): number {
+  const n = arr.length;
+  if (n < 2) return 0;
+  const mean = arr.reduce((a, b) => a + b, 0) / n;
+  const stdDev = Math.sqrt(arr.reduce((sum, x) => sum + (x - mean) ** 2, 0) / n);
+  return stdDev === 0 ? 0 : arr.reduce((sum, x) => sum + ((x - mean) / stdDev) ** 4, 0) / n;
+}
   
 function computeStatsFromAxes(prefix: string, X: number[], Y: number[], Z: number[]) {
     const mean = (arr: number[]) => arr.reduce((a, b) => a + b, 0) / arr.length;
@@ -314,10 +330,16 @@ function computeStatsFromAxes(prefix: string, X: number[], Y: number[], Z: numbe
       { name: `${prefix}-std-Z`, value: std(Z, mZ) },
       { name: `${prefix}-energy-X`, value: energy(X) },
       { name: `${prefix}-energy-Y`, value: energy(Y) },
-      { name: `${prefix}-energy-Z`, value: energy(Z) }
+      { name: `${prefix}-energy-Z`, value: energy(Z) },
+      { name: `${prefix}-skewness-X`, value: skewness(X) },
+      { name: `${prefix}-skewness-Y`, value: skewness(Y) },
+      { name: `${prefix}-skewness-Z`, value: skewness(Z) },
+      { name: `${prefix}-kurtosis-X`, value: kurtosis(X) },
+      { name: `${prefix}-kurtosis-Y`, value: kurtosis(Y) },
+      { name: `${prefix}-kurtosis-Z`, value: kurtosis(Z) },
     ];
 }
-  
+
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16, backgroundColor: '#fff' },
   title: { fontSize: 18, fontWeight: 'bold', marginBottom: 12 },
