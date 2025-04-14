@@ -27,28 +27,27 @@ export default function FeaturePreview() {
     const interval = setInterval(() => {
       const acc = accelBuffer.current;
       const gyro = gyroBuffer.current;
-    
+
       const accFeatures = computeStats(acc, 'acc');
       const gyroFeatures = computeStats(gyro, 'gyro');
-    
+
       const { jerk: jerkAcc, mag: magAcc, magJerk: magJerkAcc } = computeDerivedSignals(acc);
       const { jerk: jerkGyro, mag: magGyro, magJerk: magJerkGyro } = computeDerivedSignals(gyro);
-    
+
       const jerkAccFeatures = computeStatsFromSignal('jerkAcc', jerkAcc);
       const jerkGyroFeatures = computeStatsFromSignal('jerkGyro', jerkGyro);
       const magAccFeatures = computeStatsFromSignal('magAcc', magAcc);
       const magGyroFeatures = computeStatsFromSignal('magGyro', magGyro);
       const magJerkAccFeatures = computeStatsFromSignal('magJerkAcc', magJerkAcc);
       const magJerkGyroFeatures = computeStatsFromSignal('magJerkGyro', magJerkGyro);
-    
+
       const meanFreqAccX = computeMeanFreq(acc.map(v => v[0]));
       const meanFreqAccY = computeMeanFreq(acc.map(v => v[1]));
       const meanFreqAccZ = computeMeanFreq(acc.map(v => v[2]));
-    
       const meanFreqGyroX = computeMeanFreq(gyro.map(v => v[0]));
       const meanFreqGyroY = computeMeanFreq(gyro.map(v => v[1]));
       const meanFreqGyroZ = computeMeanFreq(gyro.map(v => v[2]));
-    
+
       const freqFeatures = [
         { name: 'acc-meanFreq-X', value: meanFreqAccX },
         { name: 'acc-meanFreq-Y', value: meanFreqAccY },
@@ -57,27 +56,26 @@ export default function FeaturePreview() {
         { name: 'gyro-meanFreq-Y', value: meanFreqGyroY },
         { name: 'gyro-meanFreq-Z', value: meanFreqGyroZ }
       ];
-    
 
       const bandFeatures = [
-        ...computeBandsEnergy(acc.map(v => v[0])).map(b => ({ name: `accX-${b.name}`, value: b.value })),
-        ...computeBandsEnergy(acc.map(v => v[1])).map(b => ({ name: `accY-${b.name}`, value: b.value })),
-        ...computeBandsEnergy(acc.map(v => v[2])).map(b => ({ name: `accZ-${b.name}`, value: b.value })),
-        ...computeBandsEnergy(gyro.map(v => v[0])).map(b => ({ name: `gyroX-${b.name}`, value: b.value })),
-        ...computeBandsEnergy(gyro.map(v => v[1])).map(b => ({ name: `gyroY-${b.name}`, value: b.value })),
-        ...computeBandsEnergy(gyro.map(v => v[2])).map(b => ({ name: `gyroZ-${b.name}`, value: b.value })),
-        ...computeBandsEnergy(jerkAcc.map(v => v[0])).map(b => ({ name: `jerkAccX-${b.name}`, value: b.value })),
-        ...computeBandsEnergy(jerkAcc.map(v => v[1])).map(b => ({ name: `jerkAccY-${b.name}`, value: b.value })),
-        ...computeBandsEnergy(jerkAcc.map(v => v[2])).map(b => ({ name: `jerkAccZ-${b.name}`, value: b.value })),
-        ...computeBandsEnergy(jerkGyro.map(v => v[0])).map(b => ({ name: `jerkGyroX-${b.name}`, value: b.value })),
-        ...computeBandsEnergy(jerkGyro.map(v => v[1])).map(b => ({ name: `jerkGyroY-${b.name}`, value: b.value })),
-        ...computeBandsEnergy(jerkGyro.map(v => v[2])).map(b => ({ name: `jerkGyroZ-${b.name}`, value: b.value })),
-        ...computeBandsEnergy(magAcc).map(b => ({ name: `magAcc-${b.name}`, value: b.value })),
-        ...computeBandsEnergy(magGyro).map(b => ({ name: `magGyro-${b.name}`, value: b.value })),
-        ...computeBandsEnergy(magJerkAcc).map(b => ({ name: `magJerkAcc-${b.name}`, value: b.value })),
-        ...computeBandsEnergy(magJerkGyro).map(b => ({ name: `magJerkGyro-${b.name}`, value: b.value }))
+        ...computeBandsEnergyUCIHAR(acc.map(v => v[0])).map(b => ({ name: `accX-${b.name}`, value: b.value })),
+        ...computeBandsEnergyUCIHAR(acc.map(v => v[1])).map(b => ({ name: `accY-${b.name}`, value: b.value })),
+        ...computeBandsEnergyUCIHAR(acc.map(v => v[2])).map(b => ({ name: `accZ-${b.name}`, value: b.value })),
+        ...computeBandsEnergyUCIHAR(gyro.map(v => v[0])).map(b => ({ name: `gyroX-${b.name}`, value: b.value })),
+        ...computeBandsEnergyUCIHAR(gyro.map(v => v[1])).map(b => ({ name: `gyroY-${b.name}`, value: b.value })),
+        ...computeBandsEnergyUCIHAR(gyro.map(v => v[2])).map(b => ({ name: `gyroZ-${b.name}`, value: b.value })),
+        ...computeBandsEnergyUCIHAR(jerkAcc.map(v => v[0])).map(b => ({ name: `jerkAccX-${b.name}`, value: b.value })),
+        ...computeBandsEnergyUCIHAR(jerkAcc.map(v => v[1])).map(b => ({ name: `jerkAccY-${b.name}`, value: b.value })),
+        ...computeBandsEnergyUCIHAR(jerkAcc.map(v => v[2])).map(b => ({ name: `jerkAccZ-${b.name}`, value: b.value })),
+        ...computeBandsEnergyUCIHAR(jerkGyro.map(v => v[0])).map(b => ({ name: `jerkGyroX-${b.name}`, value: b.value })),
+        ...computeBandsEnergyUCIHAR(jerkGyro.map(v => v[1])).map(b => ({ name: `jerkGyroY-${b.name}`, value: b.value })),
+        ...computeBandsEnergyUCIHAR(jerkGyro.map(v => v[2])).map(b => ({ name: `jerkGyroZ-${b.name}`, value: b.value })),
+        ...computeBandsEnergyUCIHAR(magAcc).map(b => ({ name: `magAcc-${b.name}`, value: b.value })),
+        ...computeBandsEnergyUCIHAR(magGyro).map(b => ({ name: `magGyro-${b.name}`, value: b.value })),
+        ...computeBandsEnergyUCIHAR(magJerkAcc).map(b => ({ name: `magJerkAcc-${b.name}`, value: b.value })),
+        ...computeBandsEnergyUCIHAR(magJerkGyro).map(b => ({ name: `magJerkGyro-${b.name}`, value: b.value }))
       ];
-    
+
       const allFeatures = [
         ...accFeatures,
         ...gyroFeatures,
@@ -90,18 +88,18 @@ export default function FeaturePreview() {
         ...freqFeatures,
         ...bandFeatures
       ];
-    
+
       setFeatures(allFeatures);
     }, 1000);
     
     
-    
 
     return () => {
+      clearInterval(interval);
       accSub.remove();
       gyroSub.remove();
-      clearInterval(interval);
     };
+    
   }, []);
 
   return (
@@ -394,6 +392,44 @@ function computeBandsEnergy(signal: number[], bandSize: number = 8): { name: str
   }
 
   return features;
+}
+
+function computeBandsEnergyUCIHAR(signal: number[]): { name: string, value: number }[] {
+  const N = signal.length;
+  if (N === 0) return [];
+
+  const spectrum: number[] = Array(Math.floor(N / 2)).fill(0);
+
+  for (let k = 0; k < spectrum.length; k++) {
+    let re = 0;
+    let im = 0;
+    for (let n = 0; n < N; n++) {
+      const angle = (2 * Math.PI * k * n) / N;
+      re += signal[n] * Math.cos(angle);
+      im -= signal[n] * Math.sin(angle);
+    }
+    spectrum[k] = re ** 2 + im ** 2;
+  }
+
+  const bands: [number, number][] = [
+    [0, 7], [8, 15], [16, 23], [24, 31], [32, 39], [40, 47], [48, 55], [56, 63],  // bandes de 8
+    [0, 15], [16, 31], [32, 47], [48, 63],  // bandes de 16
+    [0, 23], [24, 47],  // bandes de 24
+    [0, 31], [32, 63],  // bandes de 32
+    [0, 47],  // bande de 48
+    [0, 63]   // bande complète de 64
+  ]
+
+  // Ajout de bandes doublées pour atteindre 33 comme dans UCI HAR
+  const finalBands = [...bands, ...bands.slice(0, 15)];
+
+  return finalBands.map(([start, end], i) => {
+    const energy = spectrum.slice(start, end + 1).reduce((sum, val) => sum + val, 0);
+    return {
+      name: `bandsEnergy-${start + 1},${end + 1}`,
+      value: energy
+    };
+  });
 }
 
 const styles = StyleSheet.create({
