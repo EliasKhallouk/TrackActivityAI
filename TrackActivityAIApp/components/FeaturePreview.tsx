@@ -59,41 +59,132 @@ export default function FeaturePreview() {
 }
 
 function computeStats(data: number[][], prefix: string) {
-  if (data.length === 0) return [];
-
-  const X = data.map(d => d[0]);
-  const Y = data.map(d => d[1]);
-  const Z = data.map(d => d[2]);
-
-  const mean = (arr: number[]) => arr.reduce((a, b) => a + b, 0) / arr.length;
-  const std = (arr: number[], m: number) => Math.sqrt(arr.reduce((s, v) => s + (v - m) ** 2, 0) / arr.length);
-  const energy = (arr: number[]) => arr.reduce((s, v) => s + v ** 2, 0) / arr.length;
-  const min = (arr: number[]) => Math.min(...arr);
-  const max = (arr: number[]) => Math.max(...arr);
-  const sma = (X: number[], Y: number[], Z: number[]) =>
-    X.reduce((s, x, i) => s + Math.abs(x) + Math.abs(Y[i]) + Math.abs(Z[i]), 0) / X.length;
-
-  const mX = mean(X), mY = mean(Y), mZ = mean(Z);
-
-  return [
-    { name: `${prefix}-mean-X`, value: mX },
-    { name: `${prefix}-mean-Y`, value: mY },
-    { name: `${prefix}-mean-Z`, value: mZ },
-    { name: `${prefix}-std-X`, value: std(X, mX) },
-    { name: `${prefix}-std-Y`, value: std(Y, mY) },
-    { name: `${prefix}-std-Z`, value: std(Z, mZ) },
-    { name: `${prefix}-min-X`, value: min(X) },
-    { name: `${prefix}-min-Y`, value: min(Y) },
-    { name: `${prefix}-min-Z`, value: min(Z) },
-    { name: `${prefix}-max-X`, value: max(X) },
-    { name: `${prefix}-max-Y`, value: max(Y) },
-    { name: `${prefix}-max-Z`, value: max(Z) },
-    { name: `${prefix}-energy-X`, value: energy(X) },
-    { name: `${prefix}-energy-Y`, value: energy(Y) },
-    { name: `${prefix}-energy-Z`, value: energy(Z) },
-    { name: `${prefix}-sma`, value: sma(X, Y, Z) },
-  ];
-}
+    if (data.length === 0) return [];
+  
+    const X = data.map(d => d[0]);
+    const Y = data.map(d => d[1]);
+    const Z = data.map(d => d[2]);
+  
+    const mean = (arr: number[]) => arr.reduce((a, b) => a + b, 0) / arr.length;
+    const std = (arr: number[], m: number) =>
+      Math.sqrt(arr.reduce((s, v) => s + (v - m) ** 2, 0) / arr.length);
+    const energy = (arr: number[]) => arr.reduce((s, v) => s + v ** 2, 0) / arr.length;
+    const min = (arr: number[]) => Math.min(...arr);
+    const max = (arr: number[]) => Math.max(...arr);
+    const sma = (X: number[], Y: number[], Z: number[]) =>
+      X.reduce((s, x, i) => s + Math.abs(x) + Math.abs(Y[i]) + Math.abs(Z[i]), 0) / X.length;
+  
+    const iqr = (arr: number[]) => {
+      const sorted = [...arr].sort((a, b) => a - b);
+      const q1 = sorted[Math.floor(sorted.length / 4)];
+      const q3 = sorted[Math.floor(3 * sorted.length / 4)];
+      return q3 - q1;
+    };
+  
+    const entropy = (arr: number[]) => {
+      const histogram = new Map<number, number>();
+      arr.forEach((val) => {
+        const bin = Math.round(val * 10) / 10;
+        histogram.set(bin, (histogram.get(bin) || 0) + 1);
+      });
+      const total = arr.length;
+      return Array.from(histogram.values())
+        .map((count) => {
+          const p = count / total;
+          return -p * Math.log2(p);
+        })
+        .reduce((a, b) => a + b, 0);
+    };
+  
+    const correlation = (a: number[], b: number[]) => {
+      const meanA = mean(a);
+      const meanB = mean(b);
+      const num = a.reduce((sum, val, i) => sum + (val - meanA) * (b[i] - meanB), 0);
+      const denomA = Math.sqrt(a.reduce((sum, val) => sum + (val - meanA) ** 2, 0));
+      const denomB = Math.sqrt(b.reduce((sum, val) => sum + (val - meanB) ** 2, 0));
+      return denomA && denomB ? num / (denomA * denomB) : 0;
+    };
+  
+    const arCoefficients = (signal: number[], order: number = 4): number[] => {
+      const N = signal.length;
+      if (N <= order) return Array(order).fill(0);
+      const m = mean(signal);
+      const centered = signal.map(x => x - m);
+  
+      const autocorr = Array(order + 1).fill(0);
+      for (let lag = 0; lag <= order; lag++) {
+        for (let i = 0; i < N - lag; i++) {
+          autocorr[lag] += centered[i] * centered[i + lag];
+        }
+        autocorr[lag] /= (N - lag);
+      }
+  
+      const a = Array(order).fill(0);
+      const E = [autocorr[0]];
+      const k: number[] = [];
+  
+      for (let m = 1; m <= order; m++) {
+        let num = autocorr[m];
+        for (let i = 0; i < m - 1; i++) {
+          num -= a[i] * autocorr[m - i - 1];
+        }
+        const km = num / E[m - 1];
+        k.push(km);
+  
+        const newA = [...a];
+        newA[m - 1] = km;
+        for (let i = 0; i < m - 1; i++) {
+          newA[i] = a[i] - km * a[m - 2 - i];
+        }
+  
+        a.splice(0, order, ...newA);
+        E.push((1 - km * km) * E[m - 1]);
+      }
+  
+      return a;
+    };
+  
+    const mX = mean(X), mY = mean(Y), mZ = mean(Z);
+    const arX = arCoefficients(X);
+    const arY = arCoefficients(Y);
+    const arZ = arCoefficients(Z);
+  
+    const arFeatures = [
+      ...arX.map((val, i) => ({ name: `${prefix}-arCoeff-X,${i + 1}`, value: val })),
+      ...arY.map((val, i) => ({ name: `${prefix}-arCoeff-Y,${i + 1}`, value: val })),
+      ...arZ.map((val, i) => ({ name: `${prefix}-arCoeff-Z,${i + 1}`, value: val }))
+    ];
+  
+    return [
+      { name: `${prefix}-mean-X`, value: mX },
+      { name: `${prefix}-mean-Y`, value: mY },
+      { name: `${prefix}-mean-Z`, value: mZ },
+      { name: `${prefix}-std-X`, value: std(X, mX) },
+      { name: `${prefix}-std-Y`, value: std(Y, mY) },
+      { name: `${prefix}-std-Z`, value: std(Z, mZ) },
+      { name: `${prefix}-min-X`, value: min(X) },
+      { name: `${prefix}-min-Y`, value: min(Y) },
+      { name: `${prefix}-min-Z`, value: min(Z) },
+      { name: `${prefix}-max-X`, value: max(X) },
+      { name: `${prefix}-max-Y`, value: max(Y) },
+      { name: `${prefix}-max-Z`, value: max(Z) },
+      { name: `${prefix}-energy-X`, value: energy(X) },
+      { name: `${prefix}-energy-Y`, value: energy(Y) },
+      { name: `${prefix}-energy-Z`, value: energy(Z) },
+      { name: `${prefix}-iqr-X`, value: iqr(X) },
+      { name: `${prefix}-iqr-Y`, value: iqr(Y) },
+      { name: `${prefix}-iqr-Z`, value: iqr(Z) },
+      { name: `${prefix}-entropy-X`, value: entropy(X) },
+      { name: `${prefix}-entropy-Y`, value: entropy(Y) },
+      { name: `${prefix}-entropy-Z`, value: entropy(Z) },
+      { name: `${prefix}-sma`, value: sma(X, Y, Z) },
+      { name: `${prefix}-correlation-X,Y`, value: correlation(X, Y) },
+      { name: `${prefix}-correlation-X,Z`, value: correlation(X, Z) },
+      { name: `${prefix}-correlation-Y,Z`, value: correlation(Y, Z) },
+      ...arFeatures
+    ];
+  }
+  
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16, backgroundColor: '#fff' },
