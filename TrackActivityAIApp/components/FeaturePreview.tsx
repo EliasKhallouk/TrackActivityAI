@@ -53,8 +53,6 @@ export default function FeaturePreview() {
         ];
 
 
-      allFeatures.push(...accFeatures, ...gyroFeatures);
-
       setFeatures(allFeatures);
     }, 1000);
 
