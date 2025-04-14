@@ -25,13 +25,33 @@ export default function FeaturePreview() {
     });
 
     const interval = setInterval(() => {
-      const allFeatures: { name: string, value: number }[] = [];
+        const acc = accelBuffer.current;
+        const gyro = gyroBuffer.current;
 
-      const acc = accelBuffer.current;
-      const gyro = gyroBuffer.current;
+        const accFeatures = computeStats(acc, 'acc');
+        const gyroFeatures = computeStats(gyro, 'gyro');
 
-      const accFeatures = computeStats(acc, 'acc');
-      const gyroFeatures = computeStats(gyro, 'gyro');
+        const { jerk: jerkAcc, mag: magAcc, magJerk: magJerkAcc } = computeDerivedSignals(acc);
+        const { jerk: jerkGyro, mag: magGyro, magJerk: magJerkGyro } = computeDerivedSignals(gyro);
+
+        const jerkAccFeatures = computeStatsFromSignal('jerkAcc', jerkAcc);
+        const jerkGyroFeatures = computeStatsFromSignal('jerkGyro', jerkGyro);
+        const magAccFeatures = computeStatsFromSignal('magAcc', magAcc);
+        const magGyroFeatures = computeStatsFromSignal('magGyro', magGyro);
+        const magJerkAccFeatures = computeStatsFromSignal('magJerkAcc', magJerkAcc);
+        const magJerkGyroFeatures = computeStatsFromSignal('magJerkGyro', magJerkGyro);
+
+        const allFeatures = [
+        ...accFeatures,
+        ...gyroFeatures,
+        ...jerkAccFeatures,
+        ...jerkGyroFeatures,
+        ...magAccFeatures,
+        ...magGyroFeatures,
+        ...magJerkAccFeatures,
+        ...magJerkGyroFeatures
+        ];
+
 
       allFeatures.push(...accFeatures, ...gyroFeatures);
 
@@ -183,9 +203,77 @@ function computeStats(data: number[][], prefix: string) {
       { name: `${prefix}-correlation-Y,Z`, value: correlation(Y, Z) },
       ...arFeatures
     ];
-  }
+}
+  
+function computeDerivedSignals(data: number[][]) {
+    // Dérivée (Jerk)
+    const jerk: number[][] = [];
+    for (let i = 1; i < data.length; i++) {
+      const dx = data[i][0] - data[i - 1][0];
+      const dy = data[i][1] - data[i - 1][1];
+      const dz = data[i][2] - data[i - 1][2];
+      jerk.push([dx, dy, dz]);
+    }
+  
+    // Magnitude
+    const mag: number[] = data.map(([x, y, z]) => Math.sqrt(x ** 2 + y ** 2 + z ** 2));
+  
+    // Magnitude du Jerk
+    const magJerk: number[] = jerk.map(([x, y, z]) => Math.sqrt(x ** 2 + y ** 2 + z ** 2));
+  
+    return {
+      jerk,
+      mag,
+      magJerk,
+    };
+}
   
 
+function computeStatsFromSignal(prefix: string, signal: number[][] | number[]) {
+    if (signal.length === 0) return [];
+  
+    if (Array.isArray(signal[0])) {
+      // 3D signal (X, Y, Z)
+      const [X, Y, Z] = [0, 1, 2].map(i => (signal as number[][]).map(row => row[i]));
+      return computeStatsFromAxes(prefix, X, Y, Z);
+    } else {
+      // 1D signal (magnitude)
+      const s = signal as number[];
+      const mean = s.reduce((a, b) => a + b, 0) / s.length;
+      const std = Math.sqrt(s.reduce((a, b) => a + (b - mean) ** 2, 0) / s.length);
+      const energy = s.reduce((a, b) => a + b ** 2, 0) / s.length;
+      const min = Math.min(...s);
+      const max = Math.max(...s);
+      return [
+        { name: `${prefix}-mean`, value: mean },
+        { name: `${prefix}-std`, value: std },
+        { name: `${prefix}-min`, value: min },
+        { name: `${prefix}-max`, value: max },
+        { name: `${prefix}-energy`, value: energy }
+      ];
+    }
+}
+  
+function computeStatsFromAxes(prefix: string, X: number[], Y: number[], Z: number[]) {
+    const mean = (arr: number[]) => arr.reduce((a, b) => a + b, 0) / arr.length;
+    const std = (arr: number[], m: number) => Math.sqrt(arr.reduce((s, v) => s + (v - m) ** 2, 0) / arr.length);
+    const energy = (arr: number[]) => arr.reduce((s, v) => s + v ** 2, 0) / arr.length;
+  
+    const mX = mean(X), mY = mean(Y), mZ = mean(Z);
+  
+    return [
+      { name: `${prefix}-mean-X`, value: mX },
+      { name: `${prefix}-mean-Y`, value: mY },
+      { name: `${prefix}-mean-Z`, value: mZ },
+      { name: `${prefix}-std-X`, value: std(X, mX) },
+      { name: `${prefix}-std-Y`, value: std(Y, mY) },
+      { name: `${prefix}-std-Z`, value: std(Z, mZ) },
+      { name: `${prefix}-energy-X`, value: energy(X) },
+      { name: `${prefix}-energy-Y`, value: energy(Y) },
+      { name: `${prefix}-energy-Z`, value: energy(Z) }
+    ];
+}
+  
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16, backgroundColor: '#fff' },
   title: { fontSize: 18, fontWeight: 'bold', marginBottom: 12 },
