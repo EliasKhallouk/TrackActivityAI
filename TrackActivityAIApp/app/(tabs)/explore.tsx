@@ -73,6 +73,7 @@ const styles = StyleSheet.create({
 
 */
 
+import React from 'react';
 import FeaturePreview from '../../components/FeaturePreview';
 
 export default function ExploreScreen() {

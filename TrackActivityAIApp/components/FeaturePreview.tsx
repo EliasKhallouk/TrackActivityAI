@@ -8,7 +8,9 @@ export default function FeaturePreview() {
   const accelBuffer = useRef<number[][]>([]);
   const gyroBuffer = useRef<number[][]>([]);
   const SAMPLING_RATE = 20;
-  const MAX_SAMPLES = 128;
+  const MAX_SAMPLES = 300;
+
+  
 
   useEffect(() => {
     Accelerometer.setUpdateInterval(SAMPLING_RATE);
@@ -25,22 +27,28 @@ export default function FeaturePreview() {
     });
 
     const interval = setInterval(() => {
+        
       const acc = accelBuffer.current;
       const gyro = gyroBuffer.current;
+      const mean = (arr: number[]) => arr.reduce((a, b) => a + b, 0) / arr.length;
+      const std = (arr: number[], m: number) =>
+        Math.sqrt(arr.reduce((s, v) => s + (v - m) ** 2, 0) / arr.length);
 
+      if (acc.length < MAX_SAMPLES || gyro.length < MAX_SAMPLES) return;
+    
       const accFeatures = computeStats(acc, 'acc');
       const gyroFeatures = computeStats(gyro, 'gyro');
-
+    
       const { jerk: jerkAcc, mag: magAcc, magJerk: magJerkAcc } = computeDerivedSignals(acc);
       const { jerk: jerkGyro, mag: magGyro, magJerk: magJerkGyro } = computeDerivedSignals(gyro);
-
+    
       const jerkAccFeatures = computeStatsFromSignal('jerkAcc', jerkAcc);
       const jerkGyroFeatures = computeStatsFromSignal('jerkGyro', jerkGyro);
       const magAccFeatures = computeStatsFromSignal('magAcc', magAcc);
       const magGyroFeatures = computeStatsFromSignal('magGyro', magGyro);
       const magJerkAccFeatures = computeStatsFromSignal('magJerkAcc', magJerkAcc);
       const magJerkGyroFeatures = computeStatsFromSignal('magJerkGyro', magJerkGyro);
-
+    
       const meanFreqAccX = computeMeanFreq(acc.map(v => v[0]));
       const meanFreqAccY = computeMeanFreq(acc.map(v => v[1]));
       const meanFreqAccZ = computeMeanFreq(acc.map(v => v[2]));
@@ -48,14 +56,119 @@ export default function FeaturePreview() {
       const meanFreqGyroY = computeMeanFreq(gyro.map(v => v[1]));
       const meanFreqGyroZ = computeMeanFreq(gyro.map(v => v[2]));
 
+      // jerkAcc
+      const meanFreqJerkAccX = computeMeanFreq(jerkAcc.map(v => v[0]));
+      const meanFreqJerkAccY = computeMeanFreq(jerkAcc.map(v => v[1]));
+      const meanFreqJerkAccZ = computeMeanFreq(jerkAcc.map(v => v[2]));
+
+      // jerkGyro
+      const meanFreqJerkGyroX = computeMeanFreq(jerkGyro.map(v => v[0]));
+      const meanFreqJerkGyroY = computeMeanFreq(jerkGyro.map(v => v[1]));
+      const meanFreqJerkGyroZ = computeMeanFreq(jerkGyro.map(v => v[2]));
+
+      // magnitudes
+      const meanFreqMagAcc = computeMeanFreq(magAcc);
+      const meanFreqMagGyro = computeMeanFreq(magGyro);
+      const meanFreqMagJerkAcc = computeMeanFreq(magJerkAcc);
+      const meanFreqMagJerkGyro = computeMeanFreq(magJerkGyro);
+
+      
+      const gravityMag = computeDerivedSignals(acc).mag; // déjà dérivé dans ton code via magAcc = gravityMag
+
+      const tGravityAccMagFeatures = [
+        {name: 'tGravityAcc-std()-Y', value: std(acc.map(v => v[1]), mean(acc.map(v => v[1]))) },
+        {name: 'tGravityAccMag-sma()',value: gravityMag.reduce((sum, v) => sum + Math.abs(v), 0) / gravityMag.length},
+        {name: 'tGravityAccMag-skewness()',value: skewness(gravityMag)},
+        {name: 'tGravityAccMag-kurtosis()',value: kurtosis(gravityMag)}
+      ];
+
+    
       const freqFeatures = [
         { name: 'acc-meanFreq-X', value: meanFreqAccX },
         { name: 'acc-meanFreq-Y', value: meanFreqAccY },
         { name: 'acc-meanFreq-Z', value: meanFreqAccZ },
         { name: 'gyro-meanFreq-X', value: meanFreqGyroX },
         { name: 'gyro-meanFreq-Y', value: meanFreqGyroY },
-        { name: 'gyro-meanFreq-Z', value: meanFreqGyroZ }
+        { name: 'gyro-meanFreq-Z', value: meanFreqGyroZ },
+        { name: 'jerkAcc-meanFreq-X', value: meanFreqJerkAccX },
+        { name: 'jerkAcc-meanFreq-Y', value: meanFreqJerkAccY },
+        { name: 'jerkAcc-meanFreq-Z', value: meanFreqJerkAccZ },
+        { name: 'jerkGyro-meanFreq-X', value: meanFreqJerkGyroX },
+        { name: 'jerkGyro-meanFreq-Y', value: meanFreqJerkGyroY },
+        { name: 'jerkGyro-meanFreq-Z', value: meanFreqJerkGyroZ },
+        { name: 'magAcc-meanFreq', value: meanFreqMagAcc },
+        { name: 'magGyro-meanFreq', value: meanFreqMagGyro },
+        { name: 'magJerkAcc-meanFreq', value: meanFreqMagJerkAcc },
+        { name: 'magJerkGyro-meanFreq', value: meanFreqMagJerkGyro },
+      ];  
+    
+      const accMeanVec = [mean(acc.map(v => v[0])), mean(acc.map(v => v[1])), mean(acc.map(v => v[2]))];
+      const gyroMeanVec = [mean(gyro.map(v => v[0])), mean(gyro.map(v => v[1])), mean(gyro.map(v => v[2]))];
+      const jerkAccMeanVec = [mean(jerkAcc.map(v => v[0])), mean(jerkAcc.map(v => v[1])), mean(jerkAcc.map(v => v[2]))];
+      const jerkGyroMeanVec = [mean(jerkGyro.map(v => v[0])), mean(jerkGyro.map(v => v[1])), mean(jerkGyro.map(v => v[2]))];
+    
+      const gravityMean = [...accMeanVec];
+    
+      const angleFeatures = [
+        { name: 'angleAccGravity', value: angleBetweenVectors(accMeanVec, gravityMean) },
+        { name: 'angleJerkAccGravity', value: angleBetweenVectors(jerkAccMeanVec, gravityMean) },
+        { name: 'angleGyroGravity', value: angleBetweenVectors(gyroMeanVec, gravityMean) },
+        { name: 'angleJerkGyroGravity', value: angleBetweenVectors(jerkGyroMeanVec, gravityMean) },
+        { name: 'angleXGravity', value: angleBetweenVectors([1, 0, 0], gravityMean) },
+        { name: 'angleYGravity', value: angleBetweenVectors([0, 1, 0], gravityMean) },
+        { name: 'angleZGravity', value: angleBetweenVectors([0, 0, 1], gravityMean) }
       ];
+    
+      const maxIndsFeatures = [
+        { name: 'acc-maxInds-X', value: maxFreqIndex(acc.map(v => v[0])) },
+        { name: 'acc-maxInds-Y', value: maxFreqIndex(acc.map(v => v[1])) },
+        { name: 'acc-maxInds-Z', value: maxFreqIndex(acc.map(v => v[2])) },
+        { name: 'gyro-maxInds-X', value: maxFreqIndex(gyro.map(v => v[0])) },
+        { name: 'gyro-maxInds-Y', value: maxFreqIndex(gyro.map(v => v[1])) },
+        { name: 'gyro-maxInds-Z', value: maxFreqIndex(gyro.map(v => v[2])) },
+        { name: 'jerkAcc-maxInds-X', value: maxFreqIndex(jerkAcc.map(v => v[0])) },
+        { name: 'jerkAcc-maxInds-Y', value: maxFreqIndex(jerkAcc.map(v => v[1])) },
+        { name: 'jerkAcc-maxInds-Z', value: maxFreqIndex(jerkAcc.map(v => v[2])) },
+        { name: 'jerkGyro-maxInds-X', value: computeMaxIndsFromFFT(jerkGyro.map(v => v[0])) },
+        { name: 'jerkGyro-maxInds-Y', value: computeMaxIndsFromFFT(jerkGyro.map(v => v[1])) },
+        { name: 'jerkGyro-maxInds-Z', value: computeMaxIndsFromFFT(jerkGyro.map(v => v[2])) },
+        { name: 'magAcc-maxInds', value: computeMaxIndsFromFFT(magAcc) },
+        { name: 'magGyro-maxInds', value: computeMaxIndsFromFFT(magGyro) },
+        { name: 'magJerkAcc-maxInds', value: computeMaxIndsFromFFT(magJerkAcc) },
+        { name: 'magJerkGyro-maxInds', value: computeMaxIndsFromFFT(magJerkGyro) }
+      ];
+    
+      const fftAccFeatures = [
+        ...computeFFTStats(acc.map(v => v[0]), 'fBodyAcc-X'),
+        ...computeFFTStats(acc.map(v => v[1]), 'fBodyAcc-Y'),
+        ...computeFFTStats(acc.map(v => v[2]), 'fBodyAcc-Z')
+      ];
+
+      const fftGyroFeatures = [
+        ...computeFFTStats(gyro.map(v => v[0]), 'fBodyGyro-X'),
+        ...computeFFTStats(gyro.map(v => v[1]), 'fBodyGyro-Y'),
+        ...computeFFTStats(gyro.map(v => v[2]), 'fBodyGyro-Z')
+      ];
+      
+      const fftJerkAccFeatures = [
+        ...computeFFTStats(jerkAcc.map(v => v[0]), 'fBodyAccJerk-X'),
+        ...computeFFTStats(jerkAcc.map(v => v[1]), 'fBodyAccJerk-Y'),
+        ...computeFFTStats(jerkAcc.map(v => v[2]), 'fBodyAccJerk-Z')
+      ];
+      
+      const fftJerkGyroFeatures = [
+        ...computeFFTStats(jerkGyro.map(v => v[0]), 'fBodyGyroJerk-X'),
+        ...computeFFTStats(jerkGyro.map(v => v[1]), 'fBodyGyroJerk-Y'),
+        ...computeFFTStats(jerkGyro.map(v => v[2]), 'fBodyGyroJerk-Z')
+      ];
+      
+      const fftMagFeatures = [
+        ...computeFFTStats(magAcc, 'fBodyAccMag'),
+        ...computeFFTStats(magGyro, 'fBodyGyroMag'),
+        ...computeFFTStats(magJerkAcc, 'fBodyAccJerkMag'),
+        ...computeFFTStats(magJerkGyro, 'fBodyGyroJerkMag')
+      ];
+      //console.log("💥 jerkAccZ exemple :", jerkAcc.map(v => v[2]).slice(0, 5));
 
       const bandFeatures = [
         ...computeBandsEnergyUCIHAR(acc.map(v => v[0])).map(b => ({ name: `accX-${b.name}`, value: b.value })),
@@ -67,37 +180,192 @@ export default function FeaturePreview() {
         ...computeBandsEnergyUCIHAR(jerkAcc.map(v => v[0])).map(b => ({ name: `jerkAccX-${b.name}`, value: b.value })),
         ...computeBandsEnergyUCIHAR(jerkAcc.map(v => v[1])).map(b => ({ name: `jerkAccY-${b.name}`, value: b.value })),
         ...computeBandsEnergyUCIHAR(jerkAcc.map(v => v[2])).map(b => ({ name: `jerkAccZ-${b.name}`, value: b.value })),
-        ...computeBandsEnergyUCIHAR(jerkGyro.map(v => v[0])).map(b => ({ name: `jerkGyroX-${b.name}`, value: b.value })),
-        ...computeBandsEnergyUCIHAR(jerkGyro.map(v => v[1])).map(b => ({ name: `jerkGyroY-${b.name}`, value: b.value })),
-        ...computeBandsEnergyUCIHAR(jerkGyro.map(v => v[2])).map(b => ({ name: `jerkGyroZ-${b.name}`, value: b.value })),
-        ...computeBandsEnergyUCIHAR(magAcc).map(b => ({ name: `magAcc-${b.name}`, value: b.value })),
-        ...computeBandsEnergyUCIHAR(magGyro).map(b => ({ name: `magGyro-${b.name}`, value: b.value })),
-        ...computeBandsEnergyUCIHAR(magJerkAcc).map(b => ({ name: `magJerkAcc-${b.name}`, value: b.value })),
-        ...computeBandsEnergyUCIHAR(magJerkGyro).map(b => ({ name: `magJerkGyro-${b.name}`, value: b.value }))
       ];
 
-      const mean = (arr: number[]) => arr.reduce((a, b) => a + b, 0) / arr.length;
+      const skewKurtFeatures = [
+        // Acc
+        { name: 'acc-skewness-X', value: skewness(acc.map(v => v[0])) },
+        { name: 'acc-skewness-Y', value: skewness(acc.map(v => v[1])) },
+        { name: 'acc-skewness-Z', value: skewness(acc.map(v => v[2])) },
+        { name: 'acc-kurtosis-X', value: kurtosis(acc.map(v => v[0])) },
+        { name: 'acc-kurtosis-Y', value: kurtosis(acc.map(v => v[1])) },
+        { name: 'acc-kurtosis-Z', value: kurtosis(acc.map(v => v[2])) },
+      
+        // Gyro
+        { name: 'gyro-skewness-X', value: skewness(gyro.map(v => v[0])) },
+        { name: 'gyro-skewness-Y', value: skewness(gyro.map(v => v[1])) },
+        { name: 'gyro-skewness-Z', value: skewness(gyro.map(v => v[2])) },
+        { name: 'gyro-kurtosis-X', value: kurtosis(gyro.map(v => v[0])) },
+        { name: 'gyro-kurtosis-Y', value: kurtosis(gyro.map(v => v[1])) },
+        { name: 'gyro-kurtosis-Z', value: kurtosis(gyro.map(v => v[2])) },
+         
 
-      const accMeanVec = [mean(acc.map(v => v[0])), mean(acc.map(v => v[1])), mean(acc.map(v => v[2]))];
-      const gyroMeanVec = [mean(gyro.map(v => v[0])), mean(gyro.map(v => v[1])), mean(gyro.map(v => v[2]))];
-      const jerkAccMeanVec = [mean(jerkAcc.map(v => v[0])), mean(jerkAcc.map(v => v[1])), mean(jerkAcc.map(v => v[2]))];
-      const jerkGyroMeanVec = [mean(jerkGyro.map(v => v[0])), mean(jerkGyro.map(v => v[1])), mean(jerkGyro.map(v => v[2]))];
+        // Magnitudes
+        { name: 'magAcc-skewness', value: skewness(magAcc) },
+        { name: 'magAcc-kurtosis', value: kurtosis(magAcc) },
+        { name: 'magGyro-skewness', value: skewness(magGyro) },
+        { name: 'magGyro-kurtosis', value: kurtosis(magGyro) },
+        { name: 'magJerkAcc-skewness', value: skewness(magJerkAcc) },
+        { name: 'magJerkAcc-kurtosis', value: kurtosis(magJerkAcc) },
+        { name: 'magJerkGyro-skewness', value: skewness(magJerkGyro) },
+        { name: 'magJerkGyro-kurtosis', value: kurtosis(magJerkGyro) }
+      ];
+      
+      function renameToUCINames(features: { name: string, value: number }[]) {
+        const renameMap: Record<string, string> = {
+          acc: "tBodyAcc",
+          jerkAcc: "tBodyAccJerk",
+          gyro: "tBodyGyro",
+          jerkGyro: "tBodyGyroJerk",
+          magAcc: "tBodyAccMag",
+          magGyro: "tBodyGyroMag",
+          magJerkAcc: "tBodyAccJerkMag",
+          magJerkGyro: "tBodyGyroJerkMag",
+          fBodyAccMag: "fBodyAccMag",
+          fBodyGyroMag: "fBodyGyroMag",
+          fBodyAccJerkMag: "fBodyAccJerkMag",
+          fBodyGyroJerkMag: "fBodyGyroJerkMag",
+          fBodyAcc: "fBodyAcc",
+          fBodyGyro: "fBodyGyro",
+          fBodyAccJerk: "fBodyAccJerk",
+          fBodyGyroJerk: "fBodyGyroJerk"
+        };
+      
+        return features.map(({ name, value }) => {
+          let newName = name;
+      
+          // Préfixes
+          for (const [prefix, target] of Object.entries(renameMap)) {
+            if (newName.startsWith(prefix + "-")) {
+              newName = newName.replace(prefix + "-", target + "-");
+              break;
+            }
+          }
+      
+          // BandsEnergy corrections (UCI style)
+          if (newName.includes("bandsEnergy")) {
+            newName = newName
+              .replace(/^.*?-(bandsEnergy\(\)-[\d,]+)/, "fBodyAcc-" + "$1") // fallback
+              .replace(/^acc([XYZ])/, "fBodyAcc-$1")
+              .replace(/^gyro([XYZ])/, "fBodyGyro-$1")
+              .replace(/^jerkAcc([XYZ])/, "fBodyAccJerk-$1")
+              .replace(/^jerkGyro([XYZ])/, "fBodyGyroJerk-$1")
+              .replace(/-bandsEnergy-/, "-bandsEnergy()-");
+          }
+      
+          // Correction du bug dans les noms angle
+          if (newName === "angle(tBodyAccJerkMean),gravityMean)") {
+            newName = "angle(tBodyAccJerkMean,gravityMean)";
+          }
+      
+          // Angles explicites
+          const angleMap: Record<string, string> = {
+            angleAccGravity: "angle(tBodyAccMean,gravity)",
+            angleJerkAccGravity: "angle(tBodyAccJerkMean,gravityMean)",
+            angleGyroGravity: "angle(tBodyGyroMean,gravityMean)",
+            angleJerkGyroGravity: "angle(tBodyGyroJerkMean,gravityMean)",
+            angleXGravity: "angle(X,gravityMean)",
+            angleYGravity: "angle(Y,gravityMean)",
+            angleZGravity: "angle(Z,gravityMean)"
+          };
+          if (newName in angleMap) newName = angleMap[newName];
+      
+          // Standardiser les noms
+          newName = newName.replace(/-(mean|std|min|max|energy|entropy|sma|iqr|skewness|kurtosis|meanFreq|mad|maxInds)(?!\()/g, "-$1()");
+      
+          return { name: newName, value };
+        });
+      }
+      
+      
+      const tBodyGyroJerkMag_arCoeff = (() => {
+        const mag = computeDerivedSignals(gyro).magJerk;
+        const meanMag = mean(mag);
+        const centered = mag.map(x => x - meanMag);
+        const N = centered.length;
+        if (N <= 2) return 0;
+        const numerator = centered.slice(0, N - 2).reduce((sum, x, i) => sum + x * centered[i + 2], 0);
+        const denominator = centered.slice(0, N - 2).reduce((sum, x) => sum + x * x, 0);
+        return denominator !== 0 ? numerator / denominator : 0;
+      })();
+    
+      
+      const fBodyGyroMag = computeDerivedSignals(gyro).magJerk; // pour être cohérent avec fBodyGyroMag
+      const meanAbsDev = (arr: number[]) => {
+        const m = mean(arr);
+        return arr.reduce((s, x) => s + Math.abs(x - m), 0) / arr.length;
+      };
 
-      // Gravity approx = acc moyenne très lissée ou Z élevé
-      // Pour simplifier, on prend accMean comme proxy
-      const gravityMean = [...accMeanVec]; // approximation
-
-      // Angle entre vecteurs
-      const angleFeatures = [
-        { name: 'angleAccGravity', value: angleBetweenVectors(accMeanVec, gravityMean) },
-        { name: 'angleJerkAccGravity', value: angleBetweenVectors(jerkAccMeanVec, gravityMean) },
-        { name: 'angleGyroGravity', value: angleBetweenVectors(gyroMeanVec, gravityMean) },
-        { name: 'angleJerkGyroGravity', value: angleBetweenVectors(jerkGyroMeanVec, gravityMean) },
-        { name: 'angleXGravity', value: angleBetweenVectors([1, 0, 0], gravityMean) },
-        { name: 'angleYGravity', value: angleBetweenVectors([0, 1, 0], gravityMean) },
-        { name: 'angleZGravity', value: angleBetweenVectors([0, 0, 1], gravityMean) }
+      const gyroMagMissingFeatures = [
+        {
+          name: 'fBodyBodyGyroMag-mad()',
+          value: meanAbsDev(fBodyGyroMag)
+        }
       ];
 
+      // ArCoeff sur signaux 1D (ordre 4)
+      const computeARCoeff2 = (signal: number[]): number => {
+        const m = mean(signal);
+        const centered = signal.map(x => x - m);
+        const N = centered.length;
+        if (N <= 2) return 0;
+        const num = centered.slice(0, N - 2).reduce((sum, x, i) => sum + x * centered[i + 2], 0);
+        const denom = centered.slice(0, N - 2).reduce((sum, x) => sum + x * x, 0);
+        return denom !== 0 ? num / denom : 0;
+      };
+
+      const arCoeffScalarFeatures = [
+        { name: 'tBodyAccJerkMag-arCoeff()2', value: computeARCoeff2(magJerkAcc) },
+        { name: 'tBodyGyroJerkMag-arCoeff()2', value: computeARCoeff2(magJerkGyro) },
+        { name: 'tGravityAccMag-arCoeff()2', value: computeARCoeff2(magAcc) }
+      ];
+
+      const mad = (arr: number[]) => {
+        const m = mean(arr);
+        return arr.reduce((s, x) => s + Math.abs(x - m), 0) / arr.length;
+      };
+      
+      const fftMadFeatures = [
+        // fBodyAcc
+        { name: 'fBodyAcc-mad()-X', value: mad(acc.map(v => v[0])) },
+        { name: 'fBodyAcc-mad()-Y', value: mad(acc.map(v => v[1])) },
+        { name: 'fBodyAcc-mad()-Z', value: mad(acc.map(v => v[2])) },
+      
+        // fBodyGyro
+        { name: 'fBodyGyro-mad()-X', value: mad(gyro.map(v => v[0])) },
+        { name: 'fBodyGyro-mad()-Y', value: mad(gyro.map(v => v[1])) },
+        { name: 'fBodyGyro-mad()-Z', value: mad(gyro.map(v => v[2])) },
+      
+        // fBodyAccJerk
+        { name: 'fBodyAccJerk-mad()-X', value: mad(jerkAcc.map(v => v[0])) },
+        { name: 'fBodyAccJerk-mad()-Y', value: mad(jerkAcc.map(v => v[1])) },
+        { name: 'fBodyAccJerk-mad()-Z', value: mad(jerkAcc.map(v => v[2])) },
+      
+        // fBodyGyroJerk
+        { name: 'fBodyGyroJerk-mad()-X', value: mad(jerkGyro.map(v => v[0])) },
+        { name: 'fBodyGyroJerk-mad()-Y', value: mad(jerkGyro.map(v => v[1])) },
+        { name: 'fBodyGyroJerk-mad()-Z', value: mad(jerkGyro.map(v => v[2])) },
+      ];
+
+      const fftMaxIndsFeatures = [
+        { name: 'fBodyAcc-maxInds-X', value: maxFreqIndex(acc.map(v => v[0])) },
+        { name: 'fBodyAcc-maxInds-Y', value: maxFreqIndex(acc.map(v => v[1])) },
+        { name: 'fBodyAcc-maxInds-Z', value: maxFreqIndex(acc.map(v => v[2])) },
+      
+        { name: 'fBodyGyro-maxInds-X', value: maxFreqIndex(gyro.map(v => v[0])) },
+        { name: 'fBodyGyro-maxInds-Y', value: maxFreqIndex(gyro.map(v => v[1])) },
+        { name: 'fBodyGyro-maxInds-Z', value: maxFreqIndex(gyro.map(v => v[2])) },
+      
+        { name: 'fBodyAccJerk-maxInds-X', value: maxFreqIndex(jerkAcc.map(v => v[0])) },
+        { name: 'fBodyAccJerk-maxInds-Y', value: maxFreqIndex(jerkAcc.map(v => v[1])) },
+        { name: 'fBodyAccJerk-maxInds-Z', value: maxFreqIndex(jerkAcc.map(v => v[2])) },
+      
+        { name: 'fBodyGyroJerk-maxInds-X', value: maxFreqIndex(jerkGyro.map(v => v[0])) },
+        { name: 'fBodyGyroJerk-maxInds-Y', value: maxFreqIndex(jerkGyro.map(v => v[1])) },
+        { name: 'fBodyGyroJerk-maxInds-Z', value: maxFreqIndex(jerkGyro.map(v => v[2])) }
+      ];
+      
+      
       const allFeatures = [
         ...accFeatures,
         ...gyroFeatures,
@@ -109,11 +377,47 @@ export default function FeaturePreview() {
         ...magJerkGyroFeatures,
         ...freqFeatures,
         ...bandFeatures,
-        ...angleFeatures
+        ...angleFeatures,
+        ...maxIndsFeatures,
+        ...fftAccFeatures,
+        ...fftGyroFeatures,
+        ...fftJerkAccFeatures,
+        ...fftJerkGyroFeatures,
+        ...fftMagFeatures,
+        ...skewKurtFeatures,
+        ...tGravityAccMagFeatures,
+        ...gyroMagMissingFeatures,
+        ...arCoeffScalarFeatures,
+        ...fftMadFeatures,
+        ...fftMaxIndsFeatures
       ];
+     
+      // Supprimer les doublons en gardant le premier
+      const uniqueMap = new Map<string, number>();
+      for (const f of allFeatures) {
+        if (!uniqueMap.has(f.name) && typeof f.value === 'number' && !isNaN(f.value)) {
+          uniqueMap.set(f.name, f.value);
+        }
+      }
+      
+      
+      const uniqueFeatures = Array.from(uniqueMap, ([name, value]) => ({ name, value }));
 
-      setFeatures(allFeatures);
+      /*console.log('🔢 Nombre total de features calculées :', allFeatures.length);
+      console.log("⚠️ Duplicates détectés :", allFeatures.length - uniqueFeatures.length ? allFeatures.filter((f, i, arr) => arr.findIndex(x => x.name === f.name) !== i).map(f => f.name) : "aucun");
+      console.log("🧮 Total unique:", uniqueFeatures.length);*/
+
+      const renamedFeatures = renameToUCINames(uniqueFeatures);
+
+      console.log('📤 Export des features :');
+      console.log(renamedFeatures.map(f => `${f.name}`).join('\n'));
+
+      setFeatures(renamedFeatures);
+
+
     }, 1000);
+
+
     
     
 
@@ -417,7 +721,7 @@ function computeBandsEnergy(signal: number[], bandSize: number = 8): { name: str
   return features;
 }
 
-function computeBandsEnergyUCIHAR(signal: number[]): { name: string, value: number }[] {
+export function computeBandsEnergyUCIHAR(signal: number[]): { name: string, value: number }[] {
   const N = signal.length;
   if (N === 0) return [];
 
@@ -435,24 +739,40 @@ function computeBandsEnergyUCIHAR(signal: number[]): { name: string, value: numb
   }
 
   const bands: [number, number][] = [
-    [0, 7], [8, 15], [16, 23], [24, 31], [32, 39], [40, 47], [48, 55], [56, 63],  // bandes de 8
-    [0, 15], [16, 31], [32, 47], [48, 63],  // bandes de 16
-    [0, 23], [24, 47],  // bandes de 24
-    [0, 31], [32, 63],  // bandes de 32
-    [0, 47],  // bande de 48
-    [0, 63]   // bande complète de 64
-  ]
+    [0, 7], [8, 15], [16, 23], [24, 31], [32, 39], [40, 47], [48, 55], [56, 63],
+    [0, 15], [16, 31], [32, 47], [48, 63],
+    [0, 23], [24, 47],
+    [0, 31], [32, 63],
+    [0, 47],
+    [0, 63],
+    [8, 23], [24, 39], [40, 55],
+    [8, 31], [32, 55], [8, 47],
+    [16, 39], [24, 55], [16, 47], [24, 63], [16, 63],
+    [33, 63], [0, 32]
+  ];  // ✅ Total: 33 bandes
+  
+  
+  
+  
+  
+  
 
-  // Ajout de bandes doublées pour atteindre 33 comme dans UCI HAR
-  const finalBands = [...bands, ...bands.slice(0, 15)];
+  
+  const features: { name: string, value: number }[] = [];
 
-  return finalBands.map(([start, end], i) => {
-    const energy = spectrum.slice(start, end + 1).reduce((sum, val) => sum + val, 0);
-    return {
-      name: `bandsEnergy-${start + 1},${end + 1}`,
-      value: energy
-    };
+  bands.forEach(([start, end], i) => {
+    if (end < spectrum.length) {
+      const energy = spectrum.slice(start, end + 1).reduce((sum, val) => sum + val, 0);
+      features.push({
+        name: `bandsEnergy-${start + 1},${end + 1}`,
+        value: energy
+      });
+    } else {
+      console.log(`❌ Skipped band [${start}, ${end}] (spectrum too short, spectrum.length=${spectrum.length})`);
+    }
   });
+
+  return features;
 }
 
 function angleBetweenVectors(a: number[], b: number[]): number {
@@ -463,6 +783,95 @@ function angleBetweenVectors(a: number[], b: number[]): number {
   const cos = dot / (normA * normB);
   return Math.acos(Math.min(Math.max(cos, -1), 1)); // Clamp to [-1, 1]
 }
+
+function maxFreqIndex(signal: number[]): number {
+  const N = signal.length;
+  if (N === 0) return 0;
+
+  const spectrum = Array(Math.floor(N / 2)).fill(0);
+  for (let k = 0; k < spectrum.length; k++) {
+    let re = 0, im = 0;
+    for (let n = 0; n < N; n++) {
+      const angle = (2 * Math.PI * k * n) / N;
+      re += signal[n] * Math.cos(angle);
+      im -= signal[n] * Math.sin(angle);
+    }
+    spectrum[k] = Math.sqrt(re ** 2 + im ** 2);
+  }
+
+  let max = -Infinity, idx = 0;
+  for (let i = 0; i < spectrum.length; i++) {
+    if (spectrum[i] > max) {
+      max = spectrum[i];
+      idx = i;
+    }
+  }
+  return idx + 1; // pour commencer à 1 comme dans UCI HAR
+}
+
+function computeMaxIndsFromFFT(signal: number[]): number {
+  const N = signal.length;
+  if (N === 0) return 0;
+
+  const spectrum: number[] = Array(Math.floor(N / 2)).fill(0);
+
+  for (let k = 0; k < spectrum.length; k++) {
+    let re = 0;
+    let im = 0;
+    for (let n = 0; n < N; n++) {
+      const angle = (2 * Math.PI * k * n) / N;
+      re += signal[n] * Math.cos(angle);
+      im -= signal[n] * Math.sin(angle);
+    }
+    spectrum[k] = re ** 2 + im ** 2;
+  }
+
+  let maxVal = -Infinity;
+  let maxIndex = 0;
+
+  for (let i = 0; i < spectrum.length; i++) {
+    if (spectrum[i] > maxVal) {
+      maxVal = spectrum[i];
+      maxIndex = i + 1; // 1-based index like UCI HAR
+    }
+  }
+
+  return maxIndex;
+}
+
+function computeFFTStats(signal: number[], label: string): { name: string, value: number }[] {
+  const N = signal.length;
+  if (N === 0) return [];
+
+  const spectrum: number[] = Array(Math.floor(N / 2)).fill(0);
+
+  for (let k = 0; k < spectrum.length; k++) {
+    let re = 0;
+    let im = 0;
+    for (let n = 0; n < N; n++) {
+      const angle = (2 * Math.PI * k * n) / N;
+      re += signal[n] * Math.cos(angle);
+      im -= signal[n] * Math.sin(angle);
+    }
+    spectrum[k] = re ** 2 + im ** 2;
+  }
+
+  const mean = spectrum.reduce((a, b) => a + b, 0) / spectrum.length;
+  const std = Math.sqrt(spectrum.reduce((s, v) => s + (v - mean) ** 2, 0) / spectrum.length);
+  const totalEnergy = spectrum.reduce((a, b) => a + b, 0);
+  const meanFreq = spectrum.reduce((sum, val, i) => sum + i * val, 0) / totalEnergy;
+  const skewness = spectrum.reduce((s, x) => s + ((x - mean) / std) ** 3, 0) / spectrum.length;
+  const kurtosis = spectrum.reduce((s, x) => s + ((x - mean) / std) ** 4, 0) / spectrum.length;
+
+  return [
+    { name: `${label}-mean`, value: mean },
+    { name: `${label}-std`, value: std },
+    { name: `${label}-meanFreq`, value: meanFreq },
+    { name: `${label}-skewness`, value: skewness },
+    { name: `${label}-kurtosis`, value: kurtosis }
+  ];
+}
+
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16, backgroundColor: '#fff' },
