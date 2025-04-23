@@ -170,18 +170,97 @@ export default function FeaturePreview() {
       ];
       //console.log("💥 jerkAccZ exemple :", jerkAcc.map(v => v[2]).slice(0, 5));
 
+      const bandsEnergyAccX = computeBandsEnergyUCIHAR(acc.map(v => v[0]));
+      const bandsEnergyAccY = computeBandsEnergyUCIHAR(acc.map(v => v[1]));
+      const bandsEnergyAccZ = computeBandsEnergyUCIHAR(acc.map(v => v[2]));
+      const tBodyAccJerkMean = computeMeanVector(jerkAcc);
+
+
+      const bannedBands = ["1,8", "1,16", "1,24", "17,24"];
+
       const bandFeatures = [
-        ...computeBandsEnergyUCIHAR(acc.map(v => v[0])).map(b => ({ name: `accX-${b.name}`, value: b.value })),
-        ...computeBandsEnergyUCIHAR(acc.map(v => v[1])).map(b => ({ name: `accY-${b.name}`, value: b.value })),
-        ...computeBandsEnergyUCIHAR(acc.map(v => v[2])).map(b => ({ name: `accZ-${b.name}`, value: b.value })),
+        // accX
+        ...bandsEnergyAccX
+          .filter(b => !bannedBands.includes(b.name))
+          .map(b => ({ name: `accX-${b.name}`, value: b.value })),
+        // accY
+        ...bandsEnergyAccY
+          .filter(b => !bannedBands.includes(b.name))
+          .map(b => ({ name: `accY-${b.name}`, value: b.value })),
+        // accZ
+        ...bandsEnergyAccZ
+          .filter(b => !bannedBands.includes(b.name))
+          .map(b => ({ name: `accZ-${b.name}`, value: b.value })),
+
+        // les autres sont OK
         ...computeBandsEnergyUCIHAR(gyro.map(v => v[0])).map(b => ({ name: `gyroX-${b.name}`, value: b.value })),
         ...computeBandsEnergyUCIHAR(gyro.map(v => v[1])).map(b => ({ name: `gyroY-${b.name}`, value: b.value })),
         ...computeBandsEnergyUCIHAR(gyro.map(v => v[2])).map(b => ({ name: `gyroZ-${b.name}`, value: b.value })),
         ...computeBandsEnergyUCIHAR(jerkAcc.map(v => v[0])).map(b => ({ name: `jerkAccX-${b.name}`, value: b.value })),
         ...computeBandsEnergyUCIHAR(jerkAcc.map(v => v[1])).map(b => ({ name: `jerkAccY-${b.name}`, value: b.value })),
-        ...computeBandsEnergyUCIHAR(jerkAcc.map(v => v[2])).map(b => ({ name: `jerkAccZ-${b.name}`, value: b.value })),
+        ...computeBandsEnergyUCIHAR(jerkAcc.map(v => v[2])).map(b => ({ name: `jerkAccZ-${b.name}`, value: b.value }))
       ];
 
+
+      const finalMissingFeatures = [
+        {
+          name: 'fBodyAcc-bandsEnergy()-1,8',
+          value: (bandsEnergyAccX.find(b => b.name === '1,8')?.value ?? 0) +
+                 (bandsEnergyAccY.find(b => b.name === '1,8')?.value ?? 0) +
+                 (bandsEnergyAccZ.find(b => b.name === '1,8')?.value ?? 0)
+        },
+        {
+          name: 'fBodyAcc-bandsEnergy()-1,16',
+          value: (bandsEnergyAccX.find(b => b.name === '1,16')?.value ?? 0) +
+                 (bandsEnergyAccY.find(b => b.name === '1,16')?.value ?? 0) +
+                 (bandsEnergyAccZ.find(b => b.name === '1,16')?.value ?? 0)
+        },
+        {
+          name: 'fBodyAcc-bandsEnergy()-1,24',
+          value: (bandsEnergyAccX.find(b => b.name === '1,24')?.value ?? 0) +
+                 (bandsEnergyAccY.find(b => b.name === '1,24')?.value ?? 0) +
+                 (bandsEnergyAccZ.find(b => b.name === '1,24')?.value ?? 0)
+        },
+        {
+          name: 'fBodyAcc-bandsEnergy()-17,24',
+          value: (bandsEnergyAccX.find(b => b.name === '17,24')?.value ?? 0) +
+                 (bandsEnergyAccY.find(b => b.name === '17,24')?.value ?? 0) +
+                 (bandsEnergyAccZ.find(b => b.name === '17,24')?.value ?? 0)
+        },
+        {
+          name: 'angle(tBodyAccJerkMean,gravityMean)',
+          value: angleBetweenVectors(tBodyAccJerkMean, gravityMean)
+        },
+        {
+          name: 'fBodyAcc-bandsEnergy()-17,32',
+          value:
+            (bandsEnergyAccX.find(b => b.name === '17,32')?.value ?? 0) +
+            (bandsEnergyAccY.find(b => b.name === '17,32')?.value ?? 0) +
+            (bandsEnergyAccZ.find(b => b.name === '17,32')?.value ?? 0)
+        },
+        {
+          name: 'fBodyAcc-bandsEnergy()-25,32',
+          value:
+            (bandsEnergyAccX.find(b => b.name === '25,32')?.value ?? 0) +
+            (bandsEnergyAccY.find(b => b.name === '25,32')?.value ?? 0) +
+            (bandsEnergyAccZ.find(b => b.name === '25,32')?.value ?? 0)
+        },
+        {
+          name: 'fBodyAcc-bandsEnergy()-25,48',
+          value:
+            (bandsEnergyAccX.find(b => b.name === '25,48')?.value ?? 0) +
+            (bandsEnergyAccY.find(b => b.name === '25,48')?.value ?? 0) +
+            (bandsEnergyAccZ.find(b => b.name === '25,48')?.value ?? 0)
+        },
+        {
+          name: 'fBodyAcc-bandsEnergy()-33,40',
+          value:
+            (bandsEnergyAccX.find(b => b.name === '33,40')?.value ?? 0) +
+            (bandsEnergyAccY.find(b => b.name === '33,40')?.value ?? 0) +
+            (bandsEnergyAccZ.find(b => b.name === '33,40')?.value ?? 0)
+        }        
+      ];
+      
       const skewKurtFeatures = [
         // Acc
         { name: 'acc-skewness-X', value: skewness(acc.map(v => v[0])) },
@@ -278,16 +357,6 @@ export default function FeaturePreview() {
       }
       
       
-      const tBodyGyroJerkMag_arCoeff = (() => {
-        const mag = computeDerivedSignals(gyro).magJerk;
-        const meanMag = mean(mag);
-        const centered = mag.map(x => x - meanMag);
-        const N = centered.length;
-        if (N <= 2) return 0;
-        const numerator = centered.slice(0, N - 2).reduce((sum, x, i) => sum + x * centered[i + 2], 0);
-        const denominator = centered.slice(0, N - 2).reduce((sum, x) => sum + x * x, 0);
-        return denominator !== 0 ? numerator / denominator : 0;
-      })();
     
       
       const fBodyGyroMag = computeDerivedSignals(gyro).magJerk; // pour être cohérent avec fBodyGyroMag
@@ -389,7 +458,8 @@ export default function FeaturePreview() {
         ...gyroMagMissingFeatures,
         ...arCoeffScalarFeatures,
         ...fftMadFeatures,
-        ...fftMaxIndsFeatures
+        ...fftMaxIndsFeatures,
+        ...finalMissingFeatures
       ];
      
       // Supprimer les doublons en gardant le premier
@@ -403,18 +473,54 @@ export default function FeaturePreview() {
       
       const uniqueFeatures = Array.from(uniqueMap, ([name, value]) => ({ name, value }));
 
-      /*console.log('🔢 Nombre total de features calculées :', allFeatures.length);
-      console.log("⚠️ Duplicates détectés :", allFeatures.length - uniqueFeatures.length ? allFeatures.filter((f, i, arr) => arr.findIndex(x => x.name === f.name) !== i).map(f => f.name) : "aucun");
-      console.log("🧮 Total unique:", uniqueFeatures.length);*/
-
       const renamedFeatures = renameToUCINames(uniqueFeatures);
 
-      console.log('📤 Export des features :');
-      console.log(renamedFeatures.map(f => `${f.name}`).join('\n'));
+      const bannedSuffixes = [
+        "-bandsEnergy()-1,8",
+        "-bandsEnergy()-1,16",
+        "-bandsEnergy()-1,24",
+        "-bandsEnergy()-17,24"
+      ];
+      
+      const bannedExtraNames = [
+        "angle(tBodyAccJerkMean,gravityMean)",
+        "fBodyAcc-X-bandsEnergy()-1,16",
+        "fBodyAcc-X-bandsEnergy()-1,24",
+        "fBodyAcc-X-bandsEnergy()-1,32",
+        "fBodyAcc-X-bandsEnergy()-1,33",
+        "fBodyAcc-X-bandsEnergy()-1,48",
+        "fBodyAcc-X-bandsEnergy()-1,64",
+        "fBodyAcc-Y-bandsEnergy()-1,32",
+        "fBodyAcc-Z-bandsEnergy()-1,32",
+        "fBodyAcc-Y-bandsEnergy()-1,33",
+        "fBodyAcc-Z-bandsEnergy()-1,33"
+      ];
+      
+      
+      const filteredFinal = renamedFeatures.filter(f =>
+        !(
+          (
+            (f.name.startsWith("fBodyAcc-X") ||
+             f.name.startsWith("fBodyAcc-Y") ||
+             f.name.startsWith("fBodyAcc-Z"))
+            && bannedSuffixes.some(suffix => f.name.endsWith(suffix))
+          ) || bannedExtraNames.includes(f.name)
+        )
+      );
+      
+      setFeatures(filteredFinal);
+      
+      
+      //console.log('📤 Export des features :');
+      //console.log(renamedFeatures.map(f => `${f.name}`).join('\n'));
+      //console.log(filteredFinal.map((f, i) => `${i + 1} ${f.name}`).join('\n'));
+      
+      
+      //setFeatures(renamedFeatures);
 
-      setFeatures(renamedFeatures);
-
-
+      /*console.log('🔢 Nombre total de features calculées :', allFeatures.length);
+      console.log("⚠️ Duplicates détectés :", allFeatures.length - uniqueFeatures.length ? allFeatures.filter((f, i, arr) => arr.findIndex(x => x.name === f.name) !== i).map(f => f.name) : "aucun");
+      console.log("🧮 Total unique:", filteredFinal.length);*/
     }, 1000);
 
 
@@ -870,6 +976,13 @@ function computeFFTStats(signal: number[], label: string): { name: string, value
     { name: `${label}-skewness`, value: skewness },
     { name: `${label}-kurtosis`, value: kurtosis }
   ];
+}
+
+function computeMeanVector(data: number[][]): number[] {
+  const n = data.length;
+  if (n === 0) return [0, 0, 0];
+  const sum = data.reduce((acc, cur) => acc.map((v, i) => v + cur[i]), [0, 0, 0]);
+  return sum.map(v => v / n);
 }
 
 
